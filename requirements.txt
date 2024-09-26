@@ -1,0 +1,11 @@
+Flask==2.0.3
+nltk==3.6.7
+numpy==1.22.0
+openai==0.27.0
+langchain==0.0.91
+langchain-community==0.0.7
+transformers==4.28.1
+torch==1.10.2
+google-cloud-firestore==2.4.0
+Werkzeug==2.2.2
+spacy==3.2.1
