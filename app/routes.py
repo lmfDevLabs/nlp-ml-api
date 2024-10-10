@@ -1,42 +1,74 @@
 # packages
 from flask import Blueprint, request, jsonify
-# handlres
-from .handlers.vector_operations import vector_distance
-from .handlers.text_processing import tokenize_text, lemmatize_text, stemmize_text 
-from .handlers.openai_embeddings import openai_embeddings
-from .handlers.huggingface_embeddings import huggingface_embeddings
+# handlers
+from app.handlers.docs_product_handler import create_products_docs_embeddings
+from app.handlers.chat_messages_handler import deal_with_incoming_chat_messages
 
+# bp 
 main_bp = Blueprint('main', __name__)
 
-#routes
-@main_bp.route('/text/tokenize', methods=['POST'])
-def tokenize_text_route():
-    return tokenize_text()
+## ROUTES
+# hello world
+@main_bp.route('/')
+def index():
+    return 'Hello, World!'
 
-@main_bp.route('/text/lemmatize', methods=['POST'])
-def lemmatize_text_route():
-    return lemmatize_text()
+# Ruta para procesar productos
+@main_bp.route('/process-product-docs', methods=['POST'])
+def process_product_docs():
+    print("process_product_docs")
+    # raw data
+    data = request.json  
+    # some data
+    product_id = data.get('productId')
+    seller_data = data.get('sellerData')
+    showroom_data = data.get('showRoomData')
+    pdf_url = data.get('pdf')
+    car_model= data.get('car_model')
 
-@main_bp.route('/text/stemmize', methods=['POST'])
-def stemmize_text_route():
-    return stemmize_text()
+    # Verificar si la URL del PDF está vacía o es None
+    if not pdf_url:
+        return jsonify({'success': False, 'message': 'La URL del PDF está vacía o no se proporcionó.'}), 400
 
-@main_bp.route('/embeddings/openai', methods=['POST'])
-def openai_embeddings_route():
-    return openai_embeddings()
+    # Llamar a la función que maneja el procesamiento del producto
+    try: 
+        result = create_products_docs_embeddings({
+            'sellerData': seller_data, 
+            'showRoomData': showroom_data,
+            'pdf': pdf_url,
+            'productId': product_id,
+            'car_model': car_model
+        })
 
-@main_bp.route('/embeddings/huggingface', methods=['POST'])
-def huggingface_embeddings_route():
-    return huggingface_embeddings()
+        return jsonify(result), 200
 
-@main_bp.route('/vector/distance', methods=['POST'])
-def vector_distance_route():
-    # from req
-    data = request.get_json()
-    query_embedding = data.get('query_embedding')
-    embeddings_data = data.get('embeddings_data')
-    return vector_distance(query_embedding, embeddings_data, top_k=5)
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+    
+# Ruta para procesar mensajes en las sesiones de chat
+@main_bp.route('/process-chat-message', methods=['POST'])
+def process_chat_message():
+    print("process_chat_message")
+    # Datos que provienen de la solicitud
+    data = request.json  
+    # extract some data
+    user_question = data.get('content', "")
+    user_id = data.get('userId', "")
+    session_id = data.get('sessionId', "")
+    showroom_id = data.get('show_room_id', "")
+    
+    if not user_question:
+        return jsonify({"error": "No question provided"}), 400
+    
+    try:
+        result = deal_with_incoming_chat_messages({
+            "showroom_id":showroom_id,
+            "user_id":user_id,
+            "session_id":session_id,
+            "user_question":user_question,
+        })
 
-@main_bp.route('/test-connection', methods=['GET'])
-def test_connection():
-    return jsonify({'message': 'Connection successful!'}), 200
+        return jsonify(result), 200
+        
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500 
